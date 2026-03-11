@@ -453,6 +453,40 @@
             let isDrawingReceive = false, isDrawingReturn = false;
             let reportChart1, reportChart2;
             let appInitialized = false;
+            const LOCAL_CACHE_KEY = 'repair-crm-cache-v1';
+
+            function readLocalCache() {
+                try {
+                    const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+                    return raw ? JSON.parse(raw) : null;
+                } catch (error) {
+                    console.warn('Не удалось прочитать локальный кэш', error);
+                    return null;
+                }
+            }
+
+            function writeLocalCache() {
+                try {
+                    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify({
+                        orders,
+                        aggregateTypes,
+                        cachedAt: new Date().toISOString()
+                    }));
+                } catch (error) {
+                    console.warn('Не удалось записать локальный кэш', error);
+                }
+            }
+
+            function hydrateFromLocalCache() {
+                const cache = readLocalCache();
+                if (!cache) return false;
+                if (Array.isArray(cache.orders)) orders = cache.orders;
+                if (Array.isArray(cache.aggregateTypes)) {
+                    aggregateTypes = cache.aggregateTypes;
+                    repairTypesMap = new Map(cache.aggregateTypes.map((name, index) => [name, index + 1]));
+                }
+                return Array.isArray(cache.orders) && cache.orders.length > 0;
+            }
 
             function setLoginMessage(message = '', type = 'error') {
                 const el = document.getElementById('loginStatus');
@@ -505,6 +539,13 @@
             }
 
             async function initializeAppData() {
+                const hadLocalData = hydrateFromLocalCache();
+                if (hadLocalData) {
+                    updateRepairTypeSelect();
+                    renderOrders();
+                    renderAggregatesList();
+                    renderReports();
+                }
                 await loadData();
                 updateRepairTypeSelect();
                 renderOrders();
@@ -563,10 +604,13 @@
                 renderOrders();
                 setAuthState(null);
                 appInitialized = false;
+                writeLocalCache();
                 showToast('Вы вышли из системы');
             }
 
             async function loadData() {
+                let usedLocalFallback = false;
+
                 const { data: types, error: typesError } = await window.db
                     .from('repair_types')
                     .select('id, name')
@@ -574,12 +618,11 @@
 
                 if (typesError) {
                     console.error(typesError);
-                    showToast('Ошибка загрузки типов', 'error');
-                    return;
+                    usedLocalFallback = hydrateFromLocalCache() || usedLocalFallback;
+                } else {
+                    repairTypesMap = new Map((types || []).map(t => [t.name, t.id]));
+                    aggregateTypes = (types || []).map(t => t.name);
                 }
-
-                repairTypesMap = new Map((types || []).map(t => [t.name, t.id]));
-                aggregateTypes = (types || []).map(t => t.name);
 
                 const { data: ordersData, error: ordersError } = await window.db
                     .from('orders')
@@ -604,11 +647,12 @@
 
                 if (ordersError) {
                     console.error(ordersError);
-                    showToast('Ошибка загрузки заказов', 'error');
+                    usedLocalFallback = hydrateFromLocalCache() || usedLocalFallback;
+                    showToast('Не удалось загрузить заказы из базы, показан локальный кэш', 'error');
                     return;
                 }
 
-                orders = (ordersData || []).map(o => ({
+                const mappedOrders = (ordersData || []).map(o => ({
                     id: o.id,
                     client: o.client || '',
                     aggregate: o.aggregate || '',
@@ -624,6 +668,13 @@
                     signatureReceive: o.signature_receive || null,
                     signatureReturn: o.signature_return || null
                 }));
+
+                if (mappedOrders.length > 0 || !usedLocalFallback) {
+                    orders = mappedOrders;
+                    writeLocalCache();
+                } else if (usedLocalFallback) {
+                    showToast('В базе пока нет данных, показан локальный кэш', 'error');
+                }
             }
 
             async function uploadBase64Image(base64String, folder) {
@@ -748,6 +799,7 @@
                 const nextValue = !order.invoiceIssued;
                 if (await toggleOrderFlag(id, 'invoice_issued', nextValue)) {
                     order.invoiceIssued = nextValue;
+                    writeLocalCache();
                     renderOrders();
                 }
             };
@@ -758,6 +810,7 @@
                 const nextValue = !order.invoicePaid;
                 if (await toggleOrderFlag(id, 'invoice_paid', nextValue)) {
                     order.invoicePaid = nextValue;
+                    writeLocalCache();
                     renderOrders();
                 }
             };
@@ -1064,6 +1117,7 @@
 
                 showToast(currentEditId ? 'Заказ обновлён' : 'Заказ добавлен');
                 await loadData();
+                writeLocalCache();
                 renderOrders();
                 renderReports();
                 const modal = bootstrap.Modal.getInstance(document.getElementById('orderModal'));
@@ -1079,6 +1133,7 @@
                     return;
                 }
                 await loadData();
+                writeLocalCache();
                 renderOrders();
                 renderReports();
                 showToast('Заказ удалён');
