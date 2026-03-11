@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>🚛 Ремонт агрегатов · Профессиональная CRM</title>
+    <!-- Bootstrap 5 + иконки -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #f4f7fc; padding-bottom: 80px; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .app-header { background: #0b5ed7; color: white; padding: 16px 20px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .app-layout { display: block; }
+        .app-sidebar { display: none; }
+        .app-main { min-width: 0; }
+        .app-footer { background: white; position: fixed; bottom: 0; width: 100%; display: flex; justify-content: space-around; padding: 8px 0 4px; border-top: 1px solid #dee2e6; z-index: 1000; }
+        .nav-item-link { text-align: center; color: #6c757d; font-size: 0.8rem; cursor: pointer; flex: 1; transition: 0.2s; }
+        .nav-item-link.active { color: #0b5ed7; font-weight: 600; }
+        .nav-item-link i { font-size: 2rem; display: block; margin-bottom: 2px; }
+        .sidebar-nav-item { display: flex; align-items: center; gap: 12px; border-radius: 18px; padding: 14px 16px; font-size: 1rem; font-weight: 600; color: #5c6670; background: transparent; border: none; width: 100%; text-align: left; cursor: pointer; transition: 0.18s; }
+        .sidebar-nav-item i { font-size: 1.25rem; margin: 0; }
+        .sidebar-nav-item.active { background: #e7f1ff; color: #0b5ed7; }
+        .sidebar-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8793a0; margin-bottom: 14px; font-weight: 700; }
+        .content-section { display: none; padding: 16px; }
+        .content-section.active { display: block; }
+        @media (min-width: 992px) {
+            body { padding-bottom: 0; }
+            .app-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; align-items: start; padding: 24px; }
+            .app-sidebar { display: block; position: sticky; top: 92px; background: white; border: 1px solid #e6edf5; border-radius: 28px; padding: 22px 18px; box-shadow: 0 12px 28px rgba(15, 35, 95, 0.06); }
+            .app-footer { display: none; }
+            .app-main .content-section { padding: 0 0 16px 0; }
+            .btn-float { bottom: 28px; right: 28px; }
+        }
+        
+        /* Карточка заказа */
+        .order-card { background: white; border-radius: 28px; padding: 20px; margin-bottom: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e9ecf0; }
+        .order-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+        .client-name { font-size: 1.3rem; font-weight: 700; line-height: 1.2; }
+        .aggregate-type { font-size: 1rem; color: #2c3e50; background: #f0f3f8; display: inline-block; padding: 4px 12px; border-radius: 30px; margin-top: 6px; }
+        .order-status { font-size: 1rem; padding: 8px 18px; border-radius: 40px; background: #e7f1ff; color: #0b5ed7; font-weight: 600; white-space: nowrap; }
+        .order-status.completed { background: #dff0df; color: #1e7e34; }
+        .order-status.repair { background: #fff2d0; color: #997404; }
+        .order-meta { display: grid; grid-template-columns: 1fr auto; gap: 10px 16px; align-items: center; margin: 10px 0 16px; }
+        .order-meta-item { display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; color: #1f2d3d; }
+        .order-media { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; margin-bottom: 16px; }
+        .order-photos { display: flex; flex-wrap: wrap; gap: 10px; }
+        .photo-thumb { width: 72px; }
+        .photo-thumb-label { font-size: 0.75rem; color: #6c757d; margin-top: 4px; text-align: center; }
+        .order-photos img { width: 72px; height: 72px; object-fit: cover; border-radius: 18px; border: 2px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.1); cursor: pointer; transition: 0.1s; display: block; }
+        .order-photos img:active { transform: scale(0.97); }
+        .signature-badges { display: flex; flex-direction: column; gap: 10px; min-width: 128px; }
+        .signature-badge { display: inline-flex; align-items: center; justify-content: flex-start; gap: 8px; background: #f7f9fc; border: 1px solid #e5ebf2; color: #0b5ed7; border-radius: 16px; padding: 10px 12px; cursor: pointer; font-size: 0.92rem; font-weight: 600; }
+        .signature-badge i { font-size: 1.1rem; }
+        .signature-badge.empty { color: #adb5bd; cursor: default; }
+        .order-footer { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+        .invoice-icons, .order-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .icon-btn { width: 46px; height: 46px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: #f7f9fc; border: 1px solid #e5ebf2; cursor: pointer; transition: 0.15s; }
+        .icon-btn:active { transform: scale(0.96); }
+        .icon-btn i { font-size: 1.35rem; }
+        .icon-btn.primary { color: #0b5ed7; }
+        .icon-btn.danger { color: #dc3545; }
+        .invoice-icons .icon-btn { color: #adb5bd; }
+        .invoice-icons .icon-btn.active { color: #0b5ed7; background: #e7f1ff; border-color: #cfe2ff; }
+        @media (max-width: 576px) {
+            .order-header, .order-media, .order-footer { grid-template-columns: 1fr; display: grid; }
+            .order-header { display: grid; }
+            .order-status { justify-self: start; }
+            .signature-badges { min-width: 0; }
+            .order-meta { grid-template-columns: 1fr; }
+        }
+        
+        /* Фильтр */
+        .filter-bar { background: white; border-radius: 60px; padding: 12px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; border: 1px solid #e0e6ed; }
+        .filter-bar input { border: none; background: transparent; flex: 1; outline: none; font-size: 1.1rem; }
+        .filter-bar select { border: none; background: transparent; font-weight: 600; color: #0b5ed7; outline: none; font-size: 1rem; }
+        
+        /* Кнопка добавления */
+        .btn-float { position: fixed; bottom: 95px; right: 20px; width: 70px; height: 70px; border-radius: 50%; background: #0b5ed7; color: white; border: none; box-shadow: 0 10px 25px rgba(11,94,215,0.5); font-size: 36px; display: flex; align-items: center; justify-content: center; z-index: 1001; transition: 0.2s; }
+        .btn-float:active { transform: scale(0.92); }
+        
+        /* Canvas для подписи */
+        .signature-canvas { border: 2px dashed #adb5bd; border-radius: 20px; background: white; width: 100%; height: 160px; touch-action: none; }
+        .canvas-toolbar { display: flex; gap: 10px; margin-top: 8px; }
+        
+        /* Карточки KPI */
+        .kpi-card { background: white; border-radius: 28px; padding: 20px 8px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.02); border: 1px solid #edf2f7; }
+        .kpi-value { font-size: 2.2rem; font-weight: 700; color: #0b5ed7; line-height: 1.2; }
+        .chart-container { background: white; border-radius: 28px; padding: 16px; margin-bottom: 20px; border: 1px solid #edf2f7; box-shadow: 0 5px 15px rgba(0,0,0,0.02); }
+        
+        /* Модальные окна */
+        .modal-content { border-radius: 32px; border: none; }
+        .modal-header { border-bottom: none; padding-bottom: 0; }
+        .modal-footer { border-top: none; }
+        .btn { border-radius: 60px; padding: 14px 28px; font-weight: 500; }
+        .form-control, .form-select { border-radius: 60px; padding: 14px 20px; border: 1px solid #dee2e6; }
+        .form-check-input { width: 1.5rem; height: 1.5rem; margin-right: 8px; }
+        
+        /* Уведомления */
+        .toast-notification { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #0b5ed7; color: white; padding: 14px 30px; border-radius: 60px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 9999; font-weight: 500; animation: fadeInOut 2s ease forwards; pointer-events: none; }
+        @keyframes fadeInOut { 0% { opacity: 0; transform: translate(-50%, -20px); } 15% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -20px); } }
+
+        .top-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+        .user-chip { font-size: 0.85rem; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 999px; padding: 6px 12px; }
+        .logout-btn { border: 1px solid rgba(255,255,255,0.35); color: white; background: transparent; border-radius: 999px; padding: 6px 12px; font-weight: 600; }
+        .logout-btn:hover { background: rgba(255,255,255,0.12); color: white; }
+        .auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(180deg, #0b5ed7 0%, #edf3ff 55%, #f4f6f9 100%); }
+        .auth-card { width: 100%; max-width: 420px; background: white; border-radius: 28px; padding: 28px 24px; box-shadow: 0 20px 60px rgba(11,94,215,0.18); }
+        .auth-logo { width: 64px; height: 64px; border-radius: 20px; background: #0b5ed7; color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 16px; }
+        .auth-subtitle { color: #6c757d; margin-bottom: 20px; }
+        .hidden { display: none !important; }
+
+        .status-filter-wrap { position: relative; flex: 0 0 88px; min-width: 88px; display: flex; align-items: center; justify-content: flex-end; }
+        .status-filter-wrap select { appearance: none; -webkit-appearance: none; -moz-appearance: none; width: 100%; padding-right: 22px; text-align: right; cursor: pointer; }
+        .status-filter-wrap i { position: absolute; right: 0; pointer-events: none; color: #111; font-size: 1.2rem; }
+        .kpi-value-revenue { font-size: 2rem; }
+
+        @media (max-width: 576px) {
+            body { padding-bottom: 86px; }
+            .app-header { padding: 14px 14px 16px; }
+            .app-header i.fs-1 { font-size: 2rem !important; margin-right: 12px !important; }
+            .app-header h4 { font-size: 1.1rem; line-height: 1.1; max-width: 120px; }
+            .top-actions { min-width: 0; gap: 8px; flex: 1; justify-content: flex-end; }
+            .user-chip { min-width: 0; max-width: 145px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 10px; font-size: 0.8rem; }
+            .logout-btn { flex: 0 0 auto; padding: 6px 10px; }
+            .content-section { padding: 14px; }
+            .filter-bar { padding: 10px 14px; gap: 10px; }
+            .filter-bar i.fs-4 { font-size: 1.7rem !important; flex: 0 0 auto; }
+            .filter-bar input { min-width: 0; font-size: 1rem; }
+            .status-filter-wrap { flex-basis: 78px; min-width: 78px; }
+            .status-filter-wrap select { font-size: 0.95rem; }
+            .btn-float { width: 66px; height: 66px; right: 18px; bottom: 104px; }
+            .kpi-card { padding: 18px 10px; min-height: 140px; display: flex; flex-direction: column; justify-content: center; }
+            .kpi-value { font-size: clamp(1.9rem, 8vw, 2.2rem); }
+            .kpi-value-revenue { font-size: clamp(1.75rem, 7.2vw, 2rem); }
+            #reportsSection .row.g-2.mb-4:last-of-type { align-items: stretch; }
+            #reportsSection .row.g-2.mb-4:last-of-type > div:last-child .kpi-card { min-height: 126px; }
+            .chart-container { padding: 14px; }
+        }
+
+        @media (max-width: 390px) {
+            .app-header { padding-left: 12px; padding-right: 12px; }
+            .app-header h4 { font-size: 1rem; max-width: 110px; }
+            .user-chip { max-width: 128px; }
+            .logout-btn { padding: 6px 9px; font-size: 0.95rem; }
+            .status-filter-wrap { flex-basis: 72px; min-width: 72px; }
+            .filter-bar { border-radius: 32px; }
+            .kpi-value-revenue { font-size: clamp(1.55rem, 6.8vw, 1.85rem); }
+        }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body>
+    <div id="authScreen" class="auth-screen">
+        <div class="auth-card">
+            <div class="auth-logo"><i class="bi bi-shield-lock"></i></div>
+            <h3 class="fw-bold mb-2">Вход в CRM</h3>
+            <div class="auth-subtitle">Введите email и пароль администратора, которого вы создали в Supabase.</div>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label class="form-label fw-medium">Email</label>
+                    <input type="email" class="form-control form-control-lg rounded-4" id="loginEmail" placeholder="admin@example.com" required autocomplete="username">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-medium">Пароль</label>
+                    <input type="password" class="form-control form-control-lg rounded-4" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-pill">Войти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="appShell" class="hidden">
+
+    <!-- Шапка -->
+    <div class="app-header d-flex align-items-center">
+        <i class="bi bi-truck-front fs-1 me-3"></i>
+        <h4 class="m-0 fw-semibold">Ремонт агрегатов</h4>
+        <div class="top-actions">
+            <div id="userChip" class="user-chip"></div>
+            <button type="button" class="logout-btn" onclick="window.logout()">Выйти</button>
+        </div>
+    </div>
+
+    <div class="app-layout">
+        <aside class="app-sidebar">
+            <div class="sidebar-title">Навигация</div>
+            <button type="button" class="sidebar-nav-item nav-item-link active" data-section="orders"><i class="bi bi-list-ul"></i><span>Заказы</span></button>
+            <button type="button" class="sidebar-nav-item nav-item-link" data-section="reports"><i class="bi bi-bar-chart"></i><span>Отчёты</span></button>
+            <button type="button" class="sidebar-nav-item nav-item-link" data-section="aggregates"><i class="bi bi-gear"></i><span>Агрегаты</span></button>
+        </aside>
+        <main class="app-main">
+
+    <!-- Раздел: Заказы (активный по умолчанию) -->
+    <div id="ordersSection" class="content-section active">
+        <div class="filter-bar">
+            <i class="bi bi-search fs-4"></i>
+            <input type="text" id="searchInput" placeholder="Клиент или агрегат" oninput="window.filterOrders()">
+            <div class="status-filter-wrap">
+                <select id="statusFilter" onchange="window.filterOrders()">
+                    <option value="all">Все</option>
+                    <option value="Принят">Принят</option>
+                    <option value="В ремонте">В ремонте</option>
+                    <option value="Готов к выдаче">Готов</option>
+                    <option value="Выдан">Выдан</option>
+                </select>
+                <i class="bi bi-chevron-down"></i>
+            </div>
+        </div>
+        <div id="ordersList"></div>
+    </div>
+
+    <!-- Раздел: Отчёты -->
+    <div id="reportsSection" class="content-section">
+        <h5 class="mb-3 fw-semibold"><i class="bi bi-bar-chart-steps me-2"></i>Отчёты</h5>
+        <div class="row g-2 mb-4">
+            <div class="col-7">
+                <select id="reportPeriod" class="form-select rounded-pill border-0 shadow-sm">
+                    <option value="day">День</option>
+                    <option value="week" selected>Неделя</option>
+                    <option value="month">Месяц</option>
+                    <option value="all">Всё время</option>
+                </select>
+            </div>
+            <div class="col-5">
+                <button class="btn btn-primary w-100 rounded-pill" onclick="window.renderReports()">Применить</button>
+            </div>
+        </div>
+
+        <div class="row g-2 mb-4">
+            <div class="col-6 col-md-4">
+                <div class="kpi-card">
+                    <div class="kpi-value" id="totalOrdersKpi">0</div>
+                    <span class="text-secondary">Заказов</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="kpi-card">
+                    <div class="kpi-value kpi-value-revenue" id="totalRevenueKpi">0₽</div>
+                    <span class="text-secondary">Выручка</span>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="kpi-card">
+                    <div class="kpi-value" id="avgDaysKpi">0</div>
+                    <span class="text-secondary">Ср. дней</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="ordersChart" style="height: 200px; width: 100%;"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="statusChart" style="height: 200px; width: 100%;"></canvas>
+        </div>
+
+        <h6 class="mt-3 fw-semibold"><i class="bi bi-list-ul me-2"></i>Детали за период</h6>
+        <div class="table-responsive bg-white rounded-4 p-2 shadow-sm">
+            <table class="table table-sm align-middle">
+                <thead class="table-light">
+                    <tr><th>Клиент</th><th>Агрегат</th><th>Стоимость</th><th>Статус</th></tr>
+                </thead>
+                <tbody id="reportDetails"></tbody>
+            </table>
+        </div>
+        <button class="btn btn-outline-primary w-100 mt-3 rounded-pill" onclick="window.exportCSV()">
+            <i class="bi bi-download me-2"></i>Скачать отчёт CSV
+        </button>
+    </div>
+
+    <!-- Раздел: Типы агрегатов -->
+    <div id="aggregatesSection" class="content-section">
+        <h5 class="mb-3 fw-semibold"><i class="bi bi-gear-wide-connected me-2"></i>Типы агрегатов</h5>
+        <div class="input-group mb-3 rounded-pill overflow-hidden shadow-sm">
+            <input type="text" id="newAggregate" class="form-control border-0" placeholder="Например: ТНВД">
+            <button type="button" class="btn btn-primary" onclick="window.addAggregateType()">Добавить</button>
+        </div>
+        <ul class="list-group" id="aggregatesList"></ul>
+    </div>
+
+        </main>
+    </div>
+
+    <!-- Нижнее меню -->
+    <div class="app-footer">
+        <div class="nav-item-link active" data-section="orders"><i class="bi bi-list-ul"></i><span>Заказы</span></div>
+        <div class="nav-item-link" data-section="reports"><i class="bi bi-bar-chart"></i><span>Отчёты</span></div>
+        <div class="nav-item-link" data-section="aggregates"><i class="bi bi-gear"></i><span>Агрегаты</span></div>
+    </div>
+
+    <!-- Кнопка добавления заказа -->
+    <button type="button" class="btn-float" onclick="window.openAddOrderModal()"><i class="bi bi-plus-lg"></i></button>
+
+    <!-- Модальное окно заказа (с подписями) -->
+    <div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen-md-down">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Новый заказ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <form id="orderForm">
+                        <input type="hidden" id="orderId">
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Клиент <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control rounded-pill" id="clientName" placeholder="ИП Иванов" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Агрегат <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control rounded-pill" id="aggregateName" placeholder="ТНВД Bosch" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Тип ремонта</label>
+                            <select class="form-select rounded-pill" id="repairType"></select>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label fw-medium">Дата приёма</label>
+                                <input type="date" class="form-control rounded-pill" id="receiveDate">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label fw-medium">Дата возврата</label>
+                                <input type="date" class="form-control rounded-pill" id="returnDate">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Стоимость (₽)</label>
+                            <input type="number" class="form-control rounded-pill" id="totalCost" step="1" min="0" placeholder="25000">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Статус</label>
+                            <select class="form-select rounded-pill" id="statusSelect">
+                                <option>Принят</option>
+                                <option>В ремонте</option>
+                                <option>Готов к выдаче</option>
+                                <option>Выдан</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="invoiceIssued">
+                            <label class="form-check-label fw-medium">Счёт выставлен</label>
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="invoicePaid">
+                            <label class="form-check-label fw-medium">Счёт оплачен</label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Фото "до"</label>
+                            <input type="file" class="form-control rounded-pill" id="photoBefore" accept="image/*">
+                            <div class="photo-preview mt-2" id="previewBefore"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Фото "после"</label>
+                            <input type="file" class="form-control rounded-pill" id="photoAfter" accept="image/*">
+                            <div class="photo-preview mt-2" id="previewAfter"></div>
+                        </div>
+                        <!-- Подписи -->
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Подпись клиента при приёмке</label>
+                            <canvas id="signatureReceiveCanvas" class="signature-canvas" width="400" height="150"></canvas>
+                            <div class="canvas-toolbar">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.clearSignature('receive')">Очистить</button>
+                            </div>
+                            <div id="signatureReceivePreview" class="mt-2"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-medium">Подпись клиента при возврате</label>
+                            <canvas id="signatureReturnCanvas" class="signature-canvas" width="400" height="150"></canvas>
+                            <div class="canvas-toolbar">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.clearSignature('return')">Очистить</button>
+                            </div>
+                            <div id="signatureReturnPreview" class="mt-2"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary rounded-pill" onclick="window.saveOrder()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для показа фото/подписи -->
+    <div class="modal fade" id="imageModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body p-0">
+                    <img src="" id="fullImage" class="img-fluid rounded-4">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Контейнер для уведомлений -->
+    <div id="toastContainer" style="position: fixed; top: 20px; left: 0; right: 0; pointer-events: none; z-index: 9999;"></div>
+
+    <script type="module">
+        import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+        const SUPABASE_URL = "https://kchkcrngyikfpkrtxgog.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjaGtjcm5neWlrZnBrcnR4Z29nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNTQyMjYsImV4cCI6MjA4ODczMDIyNn0.g2xdnX3aJgXVa2DC8f0MXLlZmNTfF5Vf9RhDQUAbifg";
+        const STORAGE_BUCKET = "order-files";
+
+        window.db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        (function() {
+            let orders = [];
+            let aggregateTypes = [];
+            let repairTypesMap = new Map();
+            let currentEditId = null;
+            let photoBeforeData = null;
+            let photoAfterData = null;
+            let signatureReceiveData = null;
+            let signatureReturnData = null;
+
+            let receiveCanvas, receiveCtx, returnCanvas, returnCtx;
+            let isDrawingReceive = false, isDrawingReturn = false;
+            let reportChart1, reportChart2;
+            let appInitialized = false;
+
+            function showToast(message, type = 'success') {
+                const toast = document.createElement('div');
+                toast.className = 'toast-notification';
+                toast.style.backgroundColor = type === 'success' ? '#0b5ed7' : '#dc3545';
+                toast.innerText = message;
+                document.getElementById('toastContainer').appendChild(toast);
+                setTimeout(() => toast.remove(), 2200);
+            }
+
+            function escapeHtml(unsafe) {
+                if (!unsafe) return '';
+                return String(unsafe).replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function setAuthState(session) {
+                const authScreen = document.getElementById('authScreen');
+                const appShell = document.getElementById('appShell');
+                const userChip = document.getElementById('userChip');
+                if (session?.user) {
+                    authScreen.classList.add('hidden');
+                    appShell.classList.remove('hidden');
+                    userChip.textContent = session.user.email || 'admin';
+                } else {
+                    authScreen.classList.remove('hidden');
+                    appShell.classList.add('hidden');
+                    userChip.textContent = '';
+                }
+            }
+
+            async function initializeAppData() {
+                await loadData();
+                updateRepairTypeSelect();
+                renderOrders();
+                renderAggregatesList();
+                renderReports();
+                appInitialized = true;
+            }
+
+            async function ensureSessionAndBoot() {
+                const { data, error } = await window.db.auth.getSession();
+                if (error) {
+                    console.error(error);
+                    showToast('Ошибка проверки сессии', 'error');
+                    return;
+                }
+
+                let session = data?.session || null;
+
+                if (!session) {
+                    await new Promise(resolve => setTimeout(resolve, 250));
+                    const retry = await window.db.auth.getSession();
+                    if (retry.error) {
+                        console.error(retry.error);
+                    }
+                    session = retry.data?.session || null;
+                }
+
+                setAuthState(session);
+
+                if (session) {
+                    await initializeAppData();
+                } else {
+                    appInitialized = false;
+                }
+            }
+
+            async function login(email, password) {
+                const { error } = await window.db.auth.signInWithPassword({ email, password });
+                if (error) {
+                    console.error(error);
+                    showToast(error.message || 'Ошибка входа', 'error');
+                    return false;
+                }
+                showToast('Вход выполнен');
+                return true;
+            }
+
+            async function logout() {
+                const { error } = await window.db.auth.signOut();
+                if (error) {
+                    console.error(error);
+                    showToast('Ошибка выхода', 'error');
+                    return;
+                }
+                orders = [];
+                renderOrders();
+                setAuthState(null);
+                appInitialized = false;
+                showToast('Вы вышли из системы');
+            }
+
+            async function loadData() {
+                const { data: types, error: typesError } = await window.db
+                    .from('repair_types')
+                    .select('id, name')
+                    .order('name', { ascending: true });
+
+                if (typesError) {
+                    console.error(typesError);
+                    showToast('Ошибка загрузки типов', 'error');
+                    return;
+                }
+
+                repairTypesMap = new Map((types || []).map(t => [t.name, t.id]));
+                aggregateTypes = (types || []).map(t => t.name);
+
+                const { data: ordersData, error: ordersError } = await window.db
+                    .from('orders')
+                    .select(`
+                        id,
+                        client,
+                        aggregate,
+                        receive_date,
+                        return_date,
+                        total_cost,
+                        status,
+                        invoice_issued,
+                        invoice_paid,
+                        photo_before,
+                        photo_after,
+                        signature_receive,
+                        signature_return,
+                        repair_type_id,
+                        repair_types(name)
+                    `)
+                    .order('receive_date', { ascending: false });
+
+                if (ordersError) {
+                    console.error(ordersError);
+                    showToast('Ошибка загрузки заказов', 'error');
+                    return;
+                }
+
+                orders = (ordersData || []).map(o => ({
+                    id: o.id,
+                    client: o.client || '',
+                    aggregate: o.aggregate || '',
+                    repairType: o.repair_types?.name || '',
+                    receiveDate: o.receive_date || '',
+                    returnDate: o.return_date || '',
+                    totalCost: Number(o.total_cost || 0),
+                    status: o.status || 'Принят',
+                    invoiceIssued: Boolean(o.invoice_issued),
+                    invoicePaid: Boolean(o.invoice_paid),
+                    photoBefore: o.photo_before || null,
+                    photoAfter: o.photo_after || null,
+                    signatureReceive: o.signature_receive || null,
+                    signatureReturn: o.signature_return || null
+                }));
+            }
+
+            async function uploadBase64Image(base64String, folder) {
+                if (!base64String) return null;
+                if (!base64String.startsWith('data:')) return base64String;
+
+                const response = await fetch(base64String);
+                const blob = await response.blob();
+                const ext = blob.type.includes('png') ? 'png' : 'jpg';
+                const filePath = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+                const { error } = await window.db.storage
+                    .from(STORAGE_BUCKET)
+                    .upload(filePath, blob, {
+                        contentType: blob.type,
+                        upsert: false
+                    });
+
+                if (error) throw error;
+
+                const { data } = window.db.storage
+                    .from(STORAGE_BUCKET)
+                    .getPublicUrl(filePath);
+
+                return data.publicUrl;
+            }
+
+            async function toggleOrderFlag(id, field, value) {
+                const payload = { updated_at: new Date().toISOString() };
+                payload[field] = value;
+
+                const { error } = await window.db
+                    .from('orders')
+                    .update(payload)
+                    .eq('id', id);
+
+                if (error) {
+                    console.error(error);
+                    showToast('Ошибка обновления', 'error');
+                    return false;
+                }
+                return true;
+            }
+
+            function renderOrders() {
+                const filterStatus = document.getElementById('statusFilter').value;
+                const searchText = document.getElementById('searchInput').value.toLowerCase().trim();
+                let filtered = orders.filter(o => filterStatus === 'all' || o.status === filterStatus);
+
+                if (searchText) {
+                    filtered = filtered.filter(o => `${o.client} ${o.aggregate}`.toLowerCase().includes(searchText));
+                }
+
+                filtered.sort((a, b) => new Date(b.receiveDate || 0) - new Date(a.receiveDate || 0));
+
+                const container = document.getElementById('ordersList');
+                container.innerHTML = '';
+                if (!filtered.length) {
+                    container.innerHTML = '<div class="text-center text-secondary p-5">Нет заказов</div>';
+                    return;
+                }
+
+                filtered.forEach(o => {
+                    const receive = o.receiveDate ? new Date(o.receiveDate) : new Date();
+                    const end = o.status === 'Выдан' && o.returnDate ? new Date(o.returnDate) : new Date();
+                    const days = Math.max(0, Math.ceil((end - receive) / 86400000));
+                    const statusClass = o.status === 'Выдан' ? 'completed' : (o.status === 'В ремонте' ? 'repair' : '');
+                    const costText = o.totalCost ? o.totalCost.toLocaleString('ru-RU') + '₽' : '—';
+                    const beforePhoto = o.photoBefore ? `
+                        <div class="photo-thumb">
+                            <img src="${o.photoBefore}" onclick="window.showImage('${o.photoBefore}')" alt="Фото до">
+                            <div class="photo-thumb-label">До</div>
+                        </div>` : '';
+                    const afterPhoto = o.photoAfter ? `
+                        <div class="photo-thumb">
+                            <img src="${o.photoAfter}" onclick="window.showImage('${o.photoAfter}')" alt="Фото после">
+                            <div class="photo-thumb-label">После</div>
+                        </div>` : '';
+                    const receiveBadge = o.signatureReceive
+                        ? `<div class="signature-badge" onclick="window.showImage('${o.signatureReceive}')" title="Подпись при приёмке"><i class="bi bi-vector-pen"></i><span>Приёмка</span></div>`
+                        : `<div class="signature-badge empty"><i class="bi bi-vector-pen"></i><span>Нет подписи</span></div>`;
+                    const returnBadge = o.signatureReturn
+                        ? `<div class="signature-badge" onclick="window.showImage('${o.signatureReturn}')" title="Подпись при выдаче"><i class="bi bi-vector-pen"></i><span>Выдача</span></div>`
+                        : '';
+
+                    const card = document.createElement('div');
+                    card.className = 'order-card';
+                    card.innerHTML = `
+                        <div class="order-header">
+                            <div>
+                                <div class="client-name">${escapeHtml(o.client)}</div>
+                                <span class="aggregate-type">${escapeHtml(o.aggregate)}</span>
+                            </div>
+                            <span class="order-status ${statusClass}">${escapeHtml(o.status)}</span>
+                        </div>
+                        <div class="order-meta">
+                            <div class="order-meta-item"><i class="bi bi-cash-stack"></i><span>${costText}</span></div>
+                            <div class="order-meta-item"><i class="bi bi-calendar-week"></i><span>${days} дн.</span></div>
+                        </div>
+                        <div class="order-media">
+                            <div class="order-photos">${beforePhoto}${afterPhoto || ''}</div>
+                            <div class="signature-badges">${receiveBadge}${returnBadge}</div>
+                        </div>
+                        <div class="order-footer">
+                            <div class="invoice-icons">
+                                <div class="icon-btn ${o.invoiceIssued ? 'active' : ''}" onclick="window.toggleInvoiceIssued(${o.id})" title="Счёт выставлен"><i class="bi bi-receipt"></i></div>
+                                <div class="icon-btn ${o.invoicePaid ? 'active' : ''}" onclick="window.toggleInvoicePaid(${o.id})" title="Счёт оплачен"><i class="bi bi-credit-card"></i></div>
+                            </div>
+                            <div class="order-actions">
+                                <div class="icon-btn primary" onclick="window.editOrder(${o.id})" title="Редактировать"><i class="bi bi-pencil-square"></i></div>
+                                <div class="icon-btn danger" onclick="window.deleteOrder(${o.id})" title="Удалить"><i class="bi bi-trash3"></i></div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            window.toggleInvoiceIssued = async function(id) {
+                const order = orders.find(o => o.id === id);
+                if (!order) return;
+                const nextValue = !order.invoiceIssued;
+                if (await toggleOrderFlag(id, 'invoice_issued', nextValue)) {
+                    order.invoiceIssued = nextValue;
+                    renderOrders();
+                }
+            };
+
+            window.toggleInvoicePaid = async function(id) {
+                const order = orders.find(o => o.id === id);
+                if (!order) return;
+                const nextValue = !order.invoicePaid;
+                if (await toggleOrderFlag(id, 'invoice_paid', nextValue)) {
+                    order.invoicePaid = nextValue;
+                    renderOrders();
+                }
+            };
+
+            function initCanvas() {
+                receiveCanvas = document.getElementById('signatureReceiveCanvas');
+                returnCanvas = document.getElementById('signatureReturnCanvas');
+                if (receiveCanvas) {
+                    receiveCtx = receiveCanvas.getContext('2d');
+                    receiveCtx.lineWidth = 3;
+                    receiveCtx.lineCap = 'round';
+                    receiveCtx.strokeStyle = '#000';
+
+                    receiveCanvas.addEventListener('mousedown', startDrawReceive);
+                    receiveCanvas.addEventListener('mousemove', drawReceive);
+                    receiveCanvas.addEventListener('mouseup', stopDrawReceive);
+                    receiveCanvas.addEventListener('mouseleave', stopDrawReceive);
+                    receiveCanvas.addEventListener('touchstart', startDrawReceiveTouch, { passive: false });
+                    receiveCanvas.addEventListener('touchmove', drawReceiveTouch, { passive: false });
+                    receiveCanvas.addEventListener('touchend', stopDrawReceive);
+                    receiveCanvas.addEventListener('touchcancel', stopDrawReceive);
+                }
+                if (returnCanvas) {
+                    returnCtx = returnCanvas.getContext('2d');
+                    returnCtx.lineWidth = 3;
+                    returnCtx.lineCap = 'round';
+                    returnCtx.strokeStyle = '#000';
+
+                    returnCanvas.addEventListener('mousedown', startDrawReturn);
+                    returnCanvas.addEventListener('mousemove', drawReturn);
+                    returnCanvas.addEventListener('mouseup', stopDrawReturn);
+                    returnCanvas.addEventListener('mouseleave', stopDrawReturn);
+                    returnCanvas.addEventListener('touchstart', startDrawReturnTouch, { passive: false });
+                    returnCanvas.addEventListener('touchmove', drawReturnTouch, { passive: false });
+                    returnCanvas.addEventListener('touchend', stopDrawReturn);
+                    returnCanvas.addEventListener('touchcancel', stopDrawReturn);
+                }
+            }
+
+            function startDrawReceive(e) { e.preventDefault(); isDrawingReceive = true; receiveCtx.beginPath(); receiveCtx.moveTo(e.offsetX, e.offsetY); }
+            function drawReceive(e) { if (!isDrawingReceive) return; e.preventDefault(); receiveCtx.lineTo(e.offsetX, e.offsetY); receiveCtx.stroke(); }
+            function stopDrawReceive() { if (!receiveCtx) return; isDrawingReceive = false; receiveCtx.closePath(); autoSaveReceive(); }
+            function startDrawReceiveTouch(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = receiveCanvas.getBoundingClientRect();
+                isDrawingReceive = true;
+                receiveCtx.beginPath();
+                receiveCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+            }
+            function drawReceiveTouch(e) {
+                if (!isDrawingReceive) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = receiveCanvas.getBoundingClientRect();
+                receiveCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+                receiveCtx.stroke();
+            }
+
+            function startDrawReturn(e) { e.preventDefault(); isDrawingReturn = true; returnCtx.beginPath(); returnCtx.moveTo(e.offsetX, e.offsetY); }
+            function drawReturn(e) { if (!isDrawingReturn) return; e.preventDefault(); returnCtx.lineTo(e.offsetX, e.offsetY); returnCtx.stroke(); }
+            function stopDrawReturn() { if (!returnCtx) return; isDrawingReturn = false; returnCtx.closePath(); autoSaveReturn(); }
+            function startDrawReturnTouch(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = returnCanvas.getBoundingClientRect();
+                isDrawingReturn = true;
+                returnCtx.beginPath();
+                returnCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+            }
+            function drawReturnTouch(e) {
+                if (!isDrawingReturn) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = returnCanvas.getBoundingClientRect();
+                returnCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+                returnCtx.stroke();
+            }
+
+            function autoSaveReceive() {
+                if (!receiveCanvas) return;
+                signatureReceiveData = receiveCanvas.toDataURL('image/png');
+                document.getElementById('signatureReceivePreview').innerHTML = signatureReceiveData
+                    ? `<img src="${signatureReceiveData}" class="img-thumbnail" style="max-height:60px;" onclick="window.showImage('${signatureReceiveData}')">`
+                    : '';
+            }
+
+            function autoSaveReturn() {
+                if (!returnCanvas) return;
+                signatureReturnData = returnCanvas.toDataURL('image/png');
+                document.getElementById('signatureReturnPreview').innerHTML = signatureReturnData
+                    ? `<img src="${signatureReturnData}" class="img-thumbnail" style="max-height:60px;" onclick="window.showImage('${signatureReturnData}')">`
+                    : '';
+            }
+
+            window.clearSignature = function(type) {
+                if (type === 'receive' && receiveCtx) {
+                    receiveCtx.clearRect(0, 0, receiveCanvas.width, receiveCanvas.height);
+                    signatureReceiveData = null;
+                    document.getElementById('signatureReceivePreview').innerHTML = '';
+                } else if (type === 'return' && returnCtx) {
+                    returnCtx.clearRect(0, 0, returnCanvas.width, returnCanvas.height);
+                    signatureReturnData = null;
+                    document.getElementById('signatureReturnPreview').innerHTML = '';
+                }
+            };
+
+            function updateRepairTypeSelect(selectedValue = '') {
+                const select = document.getElementById('repairType');
+                if (!select) return;
+                select.innerHTML = aggregateTypes.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                if (selectedValue && aggregateTypes.includes(selectedValue)) {
+                    select.value = selectedValue;
+                } else if (aggregateTypes.length) {
+                    select.value = aggregateTypes[0];
+                }
+            }
+
+            function resetFormState() {
+                document.getElementById('orderForm').reset();
+                document.getElementById('orderId').value = '';
+                document.getElementById('previewBefore').innerHTML = '';
+                document.getElementById('previewAfter').innerHTML = '';
+                document.getElementById('signatureReceivePreview').innerHTML = '';
+                document.getElementById('signatureReturnPreview').innerHTML = '';
+                photoBeforeData = null;
+                photoAfterData = null;
+                signatureReceiveData = null;
+                signatureReturnData = null;
+                if (receiveCtx) receiveCtx.clearRect(0, 0, receiveCanvas.width, receiveCanvas.height);
+                if (returnCtx) returnCtx.clearRect(0, 0, returnCanvas.width, returnCanvas.height);
+            }
+
+            function openAddOrderModal() {
+                currentEditId = null;
+                resetFormState();
+                document.getElementById('receiveDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('modalTitle').innerText = 'Новый заказ';
+                updateRepairTypeSelect();
+                new bootstrap.Modal(document.getElementById('orderModal')).show();
+            }
+
+            function editOrder(id) {
+                const o = orders.find(x => x.id === id);
+                if (!o) return;
+                currentEditId = id;
+                resetFormState();
+                updateRepairTypeSelect(o.repairType);
+                document.getElementById('orderId').value = id;
+                document.getElementById('clientName').value = o.client;
+                document.getElementById('aggregateName').value = o.aggregate;
+                document.getElementById('receiveDate').value = o.receiveDate || '';
+                document.getElementById('returnDate').value = o.returnDate || '';
+                document.getElementById('totalCost').value = o.totalCost || '';
+                document.getElementById('statusSelect').value = o.status;
+                document.getElementById('invoiceIssued').checked = Boolean(o.invoiceIssued);
+                document.getElementById('invoicePaid').checked = Boolean(o.invoicePaid);
+
+                photoBeforeData = o.photoBefore;
+                photoAfterData = o.photoAfter;
+                signatureReceiveData = o.signatureReceive;
+                signatureReturnData = o.signatureReturn;
+
+                document.getElementById('previewBefore').innerHTML = o.photoBefore ? `<img src="${o.photoBefore}" onclick="window.showImage('${o.photoBefore}')" class="img-thumbnail" style="max-height:60px;">` : '';
+                document.getElementById('previewAfter').innerHTML = o.photoAfter ? `<img src="${o.photoAfter}" onclick="window.showImage('${o.photoAfter}')" class="img-thumbnail" style="max-height:60px;">` : '';
+                document.getElementById('signatureReceivePreview').innerHTML = o.signatureReceive ? `<img src="${o.signatureReceive}" class="img-thumbnail" style="max-height:60px;" onclick="window.showImage('${o.signatureReceive}')">` : '';
+                document.getElementById('signatureReturnPreview').innerHTML = o.signatureReturn ? `<img src="${o.signatureReturn}" class="img-thumbnail" style="max-height:60px;" onclick="window.showImage('${o.signatureReturn}')">` : '';
+
+                if (receiveCtx && o.signatureReceive) {
+                    const img = new Image();
+                    img.onload = () => receiveCtx.drawImage(img, 0, 0, receiveCanvas.width, receiveCanvas.height);
+                    img.src = o.signatureReceive;
+                }
+                if (returnCtx && o.signatureReturn) {
+                    const img = new Image();
+                    img.onload = () => returnCtx.drawImage(img, 0, 0, returnCanvas.width, returnCanvas.height);
+                    img.src = o.signatureReturn;
+                }
+
+                document.getElementById('modalTitle').innerText = 'Редактировать заказ';
+                new bootstrap.Modal(document.getElementById('orderModal')).show();
+            }
+
+            function resizeImage(file, maxWidth, callback) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > maxWidth) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                        callback(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            document.getElementById('photoBefore')?.addEventListener('change', function(e) {
+                if (e.target.files[0]) {
+                    resizeImage(e.target.files[0], 800, data => {
+                        photoBeforeData = data;
+                        document.getElementById('previewBefore').innerHTML = `<img src="${data}" onclick="window.showImage('${data}')" class="img-thumbnail" style="max-height:60px;">`;
+                    });
+                }
+            });
+
+            document.getElementById('photoAfter')?.addEventListener('change', function(e) {
+                if (e.target.files[0]) {
+                    resizeImage(e.target.files[0], 800, data => {
+                        photoAfterData = data;
+                        document.getElementById('previewAfter').innerHTML = `<img src="${data}" onclick="window.showImage('${data}')" class="img-thumbnail" style="max-height:60px;">`;
+                    });
+                }
+            });
+
+            async function saveOrder() {
+                const client = document.getElementById('clientName').value.trim();
+                const aggregate = document.getElementById('aggregateName').value.trim();
+                if (!client || !aggregate) {
+                    showToast('Заполните клиента и агрегат', 'error');
+                    return;
+                }
+
+                const repairType = document.getElementById('repairType').value;
+                const receiveDate = document.getElementById('receiveDate').value;
+                const returnDate = document.getElementById('returnDate').value || null;
+                const totalCost = parseFloat(document.getElementById('totalCost').value) || 0;
+                const status = document.getElementById('statusSelect').value;
+                const invoiceIssued = document.getElementById('invoiceIssued').checked;
+                const invoicePaid = document.getElementById('invoicePaid').checked;
+
+                if (receiveCanvas && !signatureReceiveData) {
+                    const receivePixels = receiveCtx.getImageData(0, 0, receiveCanvas.width, receiveCanvas.height).data;
+                    if (Array.from(receivePixels).some(v => v !== 0)) {
+                        signatureReceiveData = receiveCanvas.toDataURL('image/png');
+                    }
+                }
+                if (returnCanvas && !signatureReturnData) {
+                    const returnPixels = returnCtx.getImageData(0, 0, returnCanvas.width, returnCanvas.height).data;
+                    if (Array.from(returnPixels).some(v => v !== 0)) {
+                        signatureReturnData = returnCanvas.toDataURL('image/png');
+                    }
+                }
+
+                const repairTypeId = repairTypesMap.get(repairType);
+                if (!repairTypeId) {
+                    showToast('Не найден тип агрегата', 'error');
+                    return;
+                }
+
+                let photoBeforeUrl = photoBeforeData;
+                let photoAfterUrl = photoAfterData;
+                let signatureReceiveUrl = signatureReceiveData;
+                let signatureReturnUrl = signatureReturnData;
+
+                try {
+                    photoBeforeUrl = await uploadBase64Image(photoBeforeData, 'photo-before');
+                    photoAfterUrl = await uploadBase64Image(photoAfterData, 'photo-after');
+                    signatureReceiveUrl = await uploadBase64Image(signatureReceiveData, 'signature-receive');
+                    signatureReturnUrl = await uploadBase64Image(signatureReturnData, 'signature-return');
+                } catch (error) {
+                    console.error(error);
+                    showToast('Ошибка загрузки файлов', 'error');
+                    return;
+                }
+
+                const payload = {
+                    client,
+                    aggregate,
+                    repair_type_id: repairTypeId,
+                    receive_date: receiveDate || new Date().toISOString().split('T')[0],
+                    return_date: returnDate,
+                    total_cost: totalCost,
+                    status,
+                    invoice_issued: invoiceIssued,
+                    invoice_paid: invoicePaid,
+                    photo_before: photoBeforeUrl || null,
+                    photo_after: photoAfterUrl || null,
+                    signature_receive: signatureReceiveUrl || null,
+                    signature_return: signatureReturnUrl || null,
+                    updated_at: new Date().toISOString()
+                };
+
+                let result;
+                if (currentEditId) {
+                    result = await window.db.from('orders').update(payload).eq('id', currentEditId);
+                } else {
+                    result = await window.db.from('orders').insert(payload);
+                }
+
+                if (result.error) {
+                    console.error(result.error);
+                    showToast('Ошибка сохранения', 'error');
+                    return;
+                }
+
+                showToast(currentEditId ? 'Заказ обновлён' : 'Заказ добавлен');
+                await loadData();
+                renderOrders();
+                renderReports();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('orderModal'));
+                if (modal) modal.hide();
+            }
+
+            window.deleteOrder = async function(id) {
+                if (!confirm('Удалить заказ?')) return;
+                const { error } = await window.db.from('orders').delete().eq('id', id);
+                if (error) {
+                    console.error(error);
+                    showToast('Ошибка удаления', 'error');
+                    return;
+                }
+                await loadData();
+                renderOrders();
+                renderReports();
+                showToast('Заказ удалён');
+            };
+
+            window.showImage = function(src) {
+                document.getElementById('fullImage').src = src;
+                new bootstrap.Modal(document.getElementById('imageModal')).show();
+            };
+
+            function renderReports() {
+                const period = document.getElementById('reportPeriod').value;
+                let startDate = new Date();
+                startDate.setHours(0, 0, 0, 0);
+                if (period === 'week') startDate.setDate(startDate.getDate() - 7);
+                else if (period === 'month') startDate.setMonth(startDate.getMonth() - 1);
+                else if (period === 'all') startDate = new Date(0);
+
+                const filtered = orders.filter(o => new Date(o.receiveDate || 0) >= startDate);
+                const totalOrders = filtered.length;
+                const totalRevenue = filtered.reduce((sum, o) => sum + (o.totalCost || 0), 0);
+                const completed = filtered.filter(o => o.status === 'Выдан' && o.returnDate);
+                const avgDays = completed.length
+                    ? completed.reduce((acc, o) => acc + Math.ceil((new Date(o.returnDate) - new Date(o.receiveDate)) / 86400000), 0) / completed.length
+                    : 0;
+
+                document.getElementById('totalOrdersKpi').innerText = String(totalOrders);
+                document.getElementById('totalRevenueKpi').innerText = `${totalRevenue.toLocaleString('ru-RU')}₽`;
+                document.getElementById('avgDaysKpi').innerText = avgDays.toFixed(1);
+
+                const daysMap = {};
+                filtered.forEach(o => {
+                    if (!o.receiveDate) return;
+                    daysMap[o.receiveDate] = (daysMap[o.receiveDate] || 0) + 1;
+                });
+                const labels = Object.keys(daysMap).sort();
+                const values = labels.map(l => daysMap[l]);
+
+                const ctx1 = document.getElementById('ordersChart')?.getContext('2d');
+                if (ctx1) {
+                    if (reportChart1) reportChart1.destroy();
+                    reportChart1 = new Chart(ctx1, {
+                        type: 'line',
+                        data: { labels, datasets: [{ label: 'Заказов', data: values, borderColor: '#0b5ed7', backgroundColor: 'rgba(11,94,215,0.05)', tension: 0.2, fill: true }] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                    });
+                }
+
+                const statusCount = {};
+                filtered.forEach(o => { statusCount[o.status] = (statusCount[o.status] || 0) + 1; });
+                const ctx2 = document.getElementById('statusChart')?.getContext('2d');
+                if (ctx2) {
+                    if (reportChart2) reportChart2.destroy();
+                    reportChart2 = new Chart(ctx2, {
+                        type: 'doughnut',
+                        data: { labels: Object.keys(statusCount), datasets: [{ data: Object.values(statusCount), backgroundColor: ['#0b5ed7', '#ffc107', '#198754', '#6c757d'] }] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                    });
+                }
+
+                document.getElementById('reportDetails').innerHTML = filtered.map(o => `
+                    <tr>
+                        <td>${escapeHtml(o.client)}</td>
+                        <td>${escapeHtml(o.aggregate)}</td>
+                        <td>${(o.totalCost || 0).toLocaleString('ru-RU')}₽</td>
+                        <td>${escapeHtml(o.status)}</td>
+                    </tr>
+                `).join('');
+            }
+
+            function exportCSV() {
+                const period = document.getElementById('reportPeriod').value;
+                let startDate = new Date();
+                startDate.setHours(0, 0, 0, 0);
+                if (period === 'week') startDate.setDate(startDate.getDate() - 7);
+                else if (period === 'month') startDate.setMonth(startDate.getMonth() - 1);
+                else if (period === 'all') startDate = new Date(0);
+
+                const filtered = orders.filter(o => new Date(o.receiveDate || 0) >= startDate);
+                let csv = 'Клиент;Агрегат;Тип;Дата приёма;Статус;Стоимость;Подпись приёмка;Подпись возврат\n';
+                filtered.forEach(o => {
+                    csv += `${o.client};${o.aggregate};${o.repairType};${o.receiveDate};${o.status};${o.totalCost};${o.signatureReceive ? 'да' : 'нет'};${o.signatureReturn ? 'да' : 'нет'}\n`;
+                });
+
+                const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'report.csv';
+                link.click();
+                URL.revokeObjectURL(link.href);
+            }
+
+            function renderAggregatesList() {
+                const list = document.getElementById('aggregatesList');
+                list.innerHTML = '';
+                aggregateTypes.forEach(t => {
+                    const item = document.createElement('li');
+                    item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    item.innerHTML = `<span><i class="bi bi-gear me-2"></i>${escapeHtml(t)}</span>`;
+
+                    const removeBtn = document.createElement('i');
+                    removeBtn.className = 'bi bi-x-circle-fill text-danger';
+                    removeBtn.style.cursor = 'pointer';
+                    removeBtn.style.fontSize = '1.5rem';
+                    removeBtn.addEventListener('click', () => deleteAggregate(t));
+
+                    item.appendChild(removeBtn);
+                    list.appendChild(item);
+                });
+            }
+
+            async function addAggregateType() {
+                const val = document.getElementById('newAggregate').value.trim();
+                if (!val) return;
+                if (aggregateTypes.includes(val)) {
+                    showToast('Такой тип уже есть', 'error');
+                    return;
+                }
+
+                const { error } = await window.db.from('repair_types').insert({ name: val });
+                if (error) {
+                    console.error(error);
+                    showToast('Не удалось добавить тип', 'error');
+                    return;
+                }
+
+                document.getElementById('newAggregate').value = '';
+                await loadData();
+                renderAggregatesList();
+                updateRepairTypeSelect(val);
+                showToast('Тип добавлен');
+            }
+
+            async function deleteAggregate(type) {
+                if (!confirm(`Удалить тип "${type}"?`)) return;
+                const typeId = repairTypesMap.get(type);
+                if (!typeId) return;
+
+                const { error } = await window.db.from('repair_types').delete().eq('id', typeId);
+                if (error) {
+                    console.error(error);
+                    showToast('Не удалось удалить тип', 'error');
+                    return;
+                }
+
+                await loadData();
+                renderAggregatesList();
+                updateRepairTypeSelect();
+                showToast('Тип удалён');
+            }
+
+            document.querySelectorAll('.nav-item-link').forEach(item => {
+                item.addEventListener('click', function() {
+                    const section = this.dataset.section;
+                    document.querySelectorAll('.nav-item-link').forEach(i => {
+                        if (i.dataset.section === section) i.classList.add('active');
+                        else i.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                    document.getElementById(section + 'Section').classList.add('active');
+                    if (section === 'reports') renderReports();
+                    if (section === 'aggregates') renderAggregatesList();
+                    if (section === 'orders') renderOrders();
+                });
+            });
+
+            window.filterOrders = renderOrders;
+            window.openAddOrderModal = openAddOrderModal;
+            window.editOrder = editOrder;
+            window.saveOrder = saveOrder;
+            window.renderReports = renderReports;
+            window.exportCSV = exportCSV;
+            window.addAggregateType = addAggregateType;
+            window.deleteAggregate = deleteAggregate;
+            window.logout = logout;
+
+            document.addEventListener('DOMContentLoaded', async function() {
+                initCanvas();
+
+                document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const email = document.getElementById('loginEmail').value.trim();
+                    const password = document.getElementById('loginPassword').value;
+                    if (!email || !password) {
+                        showToast('Введите email и пароль', 'error');
+                        return;
+                    }
+                    await login(email, password);
+                });
+
+                window.db.auth.onAuthStateChange(async (_event, session) => {
+                    setAuthState(session);
+                    if (session) {
+                        await initializeAppData();
+                    } else {
+                        appInitialized = false;
+                    }
+                });
+
+                window.addEventListener('pageshow', async function() {
+                    await ensureSessionAndBoot();
+                });
+
+                document.addEventListener('visibilitychange', async function() {
+                    if (!document.hidden) {
+                        await ensureSessionAndBoot();
+                    }
+                });
+
+                await ensureSessionAndBoot();
+            });
+        })();
+    </script>
+    </div>
+</body>
+</html>
