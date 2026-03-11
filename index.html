@@ -426,8 +426,6 @@
             let isDrawingReceive = false, isDrawingReturn = false;
             let reportChart1, reportChart2;
             let appInitialized = false;
-            let currentSession = null;
-            let isBootingSession = true;
 
             function showToast(message, type = 'success') {
                 const toast = document.createElement('div');
@@ -450,7 +448,6 @@
             }
 
             function setAuthState(session) {
-                currentSession = session || null;
                 const authScreen = document.getElementById('authScreen');
                 const appShell = document.getElementById('appShell');
                 const userChip = document.getElementById('userChip');
@@ -458,53 +455,47 @@
                     authScreen.classList.add('hidden');
                     appShell.classList.remove('hidden');
                     userChip.textContent = session.user.email || 'admin';
-                    return;
-                }
-                if (isBootingSession) {
-                    authScreen.classList.add('hidden');
+                } else {
+                    authScreen.classList.remove('hidden');
                     appShell.classList.add('hidden');
                     userChip.textContent = '';
-                    return;
                 }
-                authScreen.classList.remove('hidden');
-                appShell.classList.add('hidden');
-                userChip.textContent = '';
             }
 
-            async function refreshAppData(options = {}) {
-                const retry = Number(options.retry || 0);
+            async function initializeAppData() {
                 await loadData();
                 updateRepairTypeSelect();
                 renderOrders();
                 renderAggregatesList();
                 renderReports();
                 appInitialized = true;
-                if (currentSession?.user && orders.length === 0 && retry < 2) {
-                    await new Promise(resolve => setTimeout(resolve, 350 * (retry + 1)));
-                    return refreshAppData({ retry: retry + 1 });
-                }
-            }
-
-            async function initializeAppData() {
-                return refreshAppData();
             }
 
             async function ensureSessionAndBoot() {
-                isBootingSession = true;
-                setAuthState(null);
                 const { data, error } = await window.db.auth.getSession();
                 if (error) {
                     console.error(error);
-                    isBootingSession = false;
-                    setAuthState(null);
                     showToast('Ошибка проверки сессии', 'error');
                     return;
                 }
-                const session = data?.session || null;
-                isBootingSession = false;
+
+                let session = data?.session || null;
+
+                if (!session) {
+                    await new Promise(resolve => setTimeout(resolve, 250));
+                    const retry = await window.db.auth.getSession();
+                    if (retry.error) {
+                        console.error(retry.error);
+                    }
+                    session = retry.data?.session || null;
+                }
+
                 setAuthState(session);
+
                 if (session) {
                     await initializeAppData();
+                } else {
+                    appInitialized = false;
                 }
             }
 
@@ -1030,7 +1021,9 @@
                 }
 
                 showToast(currentEditId ? 'Заказ обновлён' : 'Заказ добавлен');
-                await refreshAppData();
+                await loadData();
+                renderOrders();
+                renderReports();
                 const modal = bootstrap.Modal.getInstance(document.getElementById('orderModal'));
                 if (modal) modal.hide();
             }
@@ -1043,7 +1036,9 @@
                     showToast('Ошибка удаления', 'error');
                     return;
                 }
-                await refreshAppData();
+                await loadData();
+                renderOrders();
+                renderReports();
                 showToast('Заказ удалён');
             };
 
@@ -1169,7 +1164,8 @@
                 }
 
                 document.getElementById('newAggregate').value = '';
-                await refreshAppData();
+                await loadData();
+                renderAggregatesList();
                 updateRepairTypeSelect(val);
                 showToast('Тип добавлен');
             }
@@ -1186,7 +1182,8 @@
                     return;
                 }
 
-                await refreshAppData();
+                await loadData();
+                renderAggregatesList();
                 updateRepairTypeSelect();
                 showToast('Тип удалён');
             }
@@ -1232,26 +1229,21 @@
                 });
 
                 window.db.auth.onAuthStateChange(async (_event, session) => {
-                    isBootingSession = false;
                     setAuthState(session);
                     if (session) {
-                        await refreshAppData();
+                        await initializeAppData();
                     } else {
                         appInitialized = false;
-                        orders = [];
-                        renderOrders();
                     }
                 });
 
                 window.addEventListener('pageshow', async function() {
-                    if (currentSession?.user) {
-                        await refreshAppData();
-                    }
+                    await ensureSessionAndBoot();
                 });
 
                 document.addEventListener('visibilitychange', async function() {
-                    if (!document.hidden && currentSession?.user) {
-                        await refreshAppData();
+                    if (!document.hidden) {
+                        await ensureSessionAndBoot();
                     }
                 });
 
